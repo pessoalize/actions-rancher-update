@@ -14,23 +14,28 @@ async function main() {
   const dockerImage = core.getInput('docker_image', {required: true});
   const showErrorLogs = core.getInput('error_logs', {required: false});
 
-  await axios.patch(
-    `${rancherUrl}/k8s/clusters/${clusterId}/apis/apps/v1/namespaces/${namespace}/deployments/${deployment}`,
-    [
+  try {
+    await axios.patch(
+      `${rancherUrl}/k8s/clusters/${clusterId}/apis/apps/v1/namespaces/${namespace}/deployments/${deployment}`,
+      [
+        {
+          op: 'replace',
+          path: '/spec/template/spec/containers/0/image',
+          value: dockerImage,
+        },
+      ],
       {
-        op: 'replace',
-        path: '/spec/template/spec/containers/0/image',
-        value: dockerImage,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+          'Authorization': 'Bearer ' + rancherToken,
+        },
       },
-    ],
-    {
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-        'Authorization': 'Bearer ' + rancherToken,
-      },
-    },
-  );
-
+    );
+  } catch(e) {
+     if(showErrorLogs) console.log(e);
+     console.log("Provavelmente o workload é um por node, caso n seja envie a env error_logs")
+  }
+    
   try {
       await axios.post(
       `${rancherUrl}/v3/projects/${clusterId}:${projectId}/workloads/deployment:${namespace}:${deployment}?action=redeploy`,
@@ -44,7 +49,7 @@ async function main() {
     );
   } catch (e) {
      if(showErrorLogs) console.log(e);
-     console.log("Provavelmente o workload é um por node")
+      console.log("Provavelmente o workload é um por node, caso n seja envie a env error_logs")
      await axios.post(
       `${rancherUrl}/v3/projects/${clusterId}:${projectId}/workloads/daemonset:${namespace}:${deployment}?action=redeploy`,
       {},
