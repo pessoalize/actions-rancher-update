@@ -25,7 +25,9 @@ inputs:
   docker_image:
     description: Docker image
     required: true
-
+  showLogs:
+    description: Error logs
+    required: false
 runs:
   using: node12
   main: main.js
